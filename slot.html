@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Hyonex Mines - Aposta Progressiva</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap');
+
+  body {
+    margin: 0;
+    background: linear-gradient(135deg, #000000, #1a1a1a);
+    font-family: 'Orbitron', sans-serif;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    align-items: center;
+    justify-content: flex-start;
+    color: #d4af37;
+    user-select: none;
+    padding: 20px;
+  }
+
+  h1 {
+    font-size: 3.2rem;
+    letter-spacing: 10px;
+    margin-bottom: 12px;
+    text-shadow: 0 0 10px #d4af37cc;
+    user-select: none;
+  }
+
+  #balance-container, #bet-container, #mine-container {
+    margin: 12px 0 8px;
+    font-size: 1.7rem;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  input[type=number] {
+    width: 90px;
+    padding: 7px 12px;
+    font-size: 1.4rem;
+    border-radius: 10px;
+    border: 2.5px solid #d4af37;
+    background: #121212;
+    color: #d4af37;
+    text-align: center;
+    user-select: text;
+    transition: border-color 0.3s ease;
+  }
+
+  input[type=number]:focus {
+    outline: none;
+    border-color: #ffdd55;
+    box-shadow: 0 0 8px #ffdd55cc;
+  }
+
+  button {
+    background: transparent;
+    border: 2.8px solid #d4af37;
+    border-radius: 20px;
+    padding: 8px 28px;
+    font-weight: 700;
+    font-size: 1.3rem;
+    color: #d4af37;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    user-select: none;
+  }
+
+  button:hover:not(:disabled) {
+    background: #d4af37;
+    color: #000;
+    box-shadow: 0 0 25px #d4af37ff;
+  }
+
+  button:disabled {
+    border-color: #555;
+    color: #555;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  #game {
+    margin-top: 20px;
+    display: grid;
+    grid-template-columns: repeat(5, 65px);
+    grid-template-rows: repeat(5, 65px);
+    gap: 14px;
+    background: #121212;
+    padding: 36px 36px 46px;
+    border-radius: 24px;
+    box-shadow:
+      0 0 28px #d4af37dd,
+      inset 0 0 20px #d4af37bb;
+    user-select: none;
+  }
+
+  .cell {
+    width: 65px;
+    height: 65px;
+    background: linear-gradient(145deg, #292929, #0d0d0d);
+    border-radius: 16px;
+    border: 3px solid #d4af37;
+    box-shadow:
+      inset 0 0 10px #d4af37cc,
+      0 0 10px #d4af37cc;
+    font-size: 2.6rem;
+    line-height: 65px;
+    text-align: center;
+    color: #d4af37;
+    cursor: pointer;
+    transition:
+      background-color 0.4s ease,
+      color 0.4s ease,
+      box-shadow 0.3s ease;
+  }
+
+  .cell.revealed-safe {
+    background: #d4af37;
+    color: #000;
+    cursor: default;
+    box-shadow:
+      0 0 25px #d4af37ff,
+      inset 0 0 12px #d4af37ee;
+  }
+
+  .cell.revealed-mine {
+    background: #ff4444;
+    color: #fff;
+    box-shadow:
+      0 0 30px #ff4444cc,
+      inset 0 0 15px #ff0000cc;
+    cursor: default;
+  }
+
+  #message {
+    margin-top: 30px;
+    font-size: 1.9rem;
+    font-weight: 700;
+    min-height: 2.8rem;
+    letter-spacing: 1.5px;
+    text-align: center;
+    user-select: none;
+  }
+
+  #resetBtn {
+    margin-top: 34px;
+    padding: 14px 52px;
+    font-size: 1.5rem;
+    font-weight: 700;
+    background: transparent;
+    border: 3.2px solid #d4af37;
+    border-radius: 30px;
+    color: #d4af37;
+    cursor: pointer;
+    box-shadow: 0 0 20px #d4af37cc;
+    transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+    user-select: none;
+  }
+
+  #resetBtn:disabled {
+    border-color: #555;
+    color: #555;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  #resetBtn:hover:not(:disabled) {
+    background-color: #d4af37;
+    color: #000;
+    box-shadow: 0 0 35px #d4af37ff;
+  }
+</style>
+</head>
+<body>
+
+<h1>💣 Hyonex Mines</h1>
+
+<div id="balance-container">Saldo: <span id="balance">100</span> moedas</div>
+
+<div id="bet-container">
+  Aposte:
+  <input type="number" id="betInput" min="1" max="100" value="10" />
+  <button id="startBtn">Iniciar Jogo</button>
+</div>
+
+<div id="mine-container">
+  Minas:
+  <input type="number" id="mineInput" min="1" max="15" value="6" />
+</div>
+
+<div id="game"></div>
+
+<div id="message"></div>
+
+<button id="resetBtn" disabled>Reiniciar</button>
+
+<script>
+  const gridSize = 5; // 5x5
+  let minesCount = 6;
+  let mines = new Set();
+  let revealedCount = 0;
+  let gameOver = false;
+  let balance = 100;
+  let betAmount = 0;
+  let earnings = 0;
+
+  // Ganhos progressivos em % da aposta por célula segura revelada
+  const earningsPercentages = [0.10, 0.30, 0.50, 0.70, 0.90, 1.10, 1.30, 1.50, 1.70, 1.90, 2.10, 2.30, 2.50, 2.70, 3.00];
+
+  const gameEl = document.getElementById('game');
+  const messageEl = document.getElementById('message');
+  const resetBtn = document.getElementById('resetBtn');
+  const balanceEl = document.getElementById('balance');
+  const betInput = document.getElementById('betInput');
+  const startBtn = document.getElementById('startBtn');
+  const mineInput = document.getElementById('mineInput');
+
+  function createGame() {
+    gameEl.innerHTML = '';
+    mines.clear();
+    revealedCount = 0;
+    gameOver = false;
+    earnings = 0;
+    messageEl.textContent = '';
+    gameEl.style.pointerEvents = 'auto';
+    resetBtn.disabled = false;
+    startBtn.disabled = true;
+    betInput.disabled = true;
+    mineInput.disabled = true;
+
+    minesCount = Math.min(Math.max(Number(mineInput.value), 1), 15);
+
+    while (mines.size < minesCount) {
+      const pos = Math.floor(Math.random() * (gridSize * gridSize));
+      mines.add(pos);
+    }
+
+    for (let i = 0; i < gridSize * gridSize; i++) {
+      const cell = document.createElement('div');
+      cell.classList.add('cell');
+      cell.dataset.index = i;
+      cell.addEventListener('click', () => revealCell(i, cell));
+      gameEl.appendChild(cell);
+    }
+  }
+
+  function revealCell(index, cell) {
+    if (gameOver || cell.classList.contains('revealed-safe') || cell.classList.contains('revealed-mine')) return;
+
+    if (mines.has(index)) {
+      // Perde tudo
+      cell.classList.add('revealed-mine');
+      messageEl.textContent = `💥 Você pisou numa mina! Perdeu ${betAmount.toFixed(2)} moedas.`;
+      balance -= betAmount;
+      endRound();
+      updateBalance();
+      return;
+    } else {
+      revealedCount++;
+      cell.classList.add('revealed-safe');
+
+      // Calcula ganho progressivo baseado na ordem da safe revelada (0-based)
+      const earningPercent = earningsPercentages[Math.min(revealedCount - 1, earningsPercentages.length - 1)];
+      const earningThisCell = betAmount * earningPercent;
+      earnings += earningThisCell;
+
+      messageEl.textContent = `✅ Revelou seguro! Ganhou ${earningThisCell.toFixed(2)} moedas nesta célula. Ganho total: ${earnings.toFixed(2)} moedas.`;
+
+      // Se revelou todas safe possíveis (total safe = total células - minas)
+      if (revealedCount === (gridSize * gridSize - minesCount)) {
+        // Ganha 3x aposta + earnings acumulados
+        const bonus = betAmount * 3;
+        balance += bonus + earnings;
+        messageEl.textContent = `🎉 Parabéns! Revelou tudo seguro e ganhou bônus de ${bonus.toFixed(2)} + ganhos de ${earnings.toFixed(2)}!`;
+        gameOver = true;
+        endRound();
+        updateBalance();
+      }
+    }
+  }
+
+  function endRound() {
+    resetBtn.disabled = false;
+    startBtn.disabled = false;
+    betInput.disabled = false;
+    mineInput.disabled = false;
+    gameEl.style.pointerEvents = 'none';
+
+    if (balance <= 0) {
+      messageEl.textContent = '❌ Saldo zerado! Jogo encerrado.';
+      startBtn.disabled = true;
+      betInput.disabled = true;
+      mineInput.disabled = true;
+      resetBtn.disabled = true;
+    }
+  }
+
+  resetBtn.addEventListener('click', () => {
+    if (balance <= 0) return;
+    createGame();
+    messageEl.textContent = 'Clique nas células para revelar... mas cuidado nas minas!';
+  });
+
+  startBtn.addEventListener('click', () => {
+    const betVal = Number(betInput.value);
+    if (!betVal || betVal <= 0) {
+      alert('Digite um valor de aposta válido!');
+      return;
+    }
+    if (betVal > balance) {
+      alert('Você não tem saldo suficiente para essa aposta!');
+      return;
+    }
+    betAmount = betVal;
+    createGame();
+    messageEl.textContent = 'Jogo iniciado! Clique nas células para revelar...';
+  });
+
+  function updateBalance() {
+    balanceEl.textContent = balance.toFixed(2);
+  }
+
+  updateBalance();
+</script>
+
+</body>
+</html>
